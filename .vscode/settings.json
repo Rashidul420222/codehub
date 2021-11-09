@@ -1,32 +1,5 @@
 {
     "files.exclude": {
-        "**/.git": false,
-        "**/.svn": false,
-        "**/.hg": false,
-        "**/CVS": false,
-        "**/.DS_Store": false,
-        "**/Thumbs.db": false,
-        "**/*.freezed.dart": false,
-        "**/*.g.dart": false,
-        "**/.gitkeep": false,
-        "**/web": false,
-        "**/android": false,
-        "**/.gitignore": false,
-        "**/.dart_tool": false,
-        "**/.idea": false,
-        "**/.vscode": false,
-        "**/ios": false,
-        "**/.flutter-plugins": false,
-        "**/.flutter-plugins-dependencies": false,
-        "**/.metadata": false,
-        "**/analysis_options.yaml": false,
-        "**/.packages": false,
-        "**/pubspec.yaml": false,
-        "**/README.md": false,
-        "**/pubspec.lock": false,
-        "**/codehub.iml": false
-    },
-    "explorerExclude.backup": {
         "**/.git": true,
         "**/.svn": false,
         "**/.hg": false,
@@ -52,5 +25,6 @@
         "**/README.md": true,
         "**/pubspec.lock": true,
         "**/codehub.iml": true
-    }
+    },
+    "explorerExclude.backup": null
 }
