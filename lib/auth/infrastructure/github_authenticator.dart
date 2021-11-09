@@ -1,3 +1,4 @@
+import '/core/infrastructure/dio_extentions.dart';
 import '/auth/domain/auth_failure.dart';
 import '/auth/infrastructure/credentials_storage/credentials_storage.dart';
 import '/core/shared/endcoders.dart';
@@ -38,7 +39,10 @@ class GithubAuthenticator {
       final storedCredentials = await _credentialsStorage.read();
 
       if (storedCredentials != null) {
-        if (storedCredentials.canRefresh && storedCredentials.isExpired) {}
+        if (storedCredentials.canRefresh && storedCredentials.isExpired) {
+          final failureOrCredentials = await refresh(storedCredentials);
+          return failureOrCredentials.fold((l) => null, (r) => r);
+        }
         return storedCredentials;
       }
     } on PlatformException {
@@ -49,7 +53,7 @@ class GithubAuthenticator {
   Future<bool> isSignedIn() =>
       getSignedInCredentials().then((credentials) => credentials != null);
 
-  AuthorizationCodeGrant codeGrant() {
+  AuthorizationCodeGrant createGrant() {
     return AuthorizationCodeGrant(
       clientId,
       authorizationEndpoint,
@@ -63,7 +67,7 @@ class GithubAuthenticator {
     return grant.getAuthorizationUrl(redirectUrl, scopes: scopes);
   }
 
-  Future<Either<AuthFailure, Unit>> HandleAuthorizationResponse(
+  Future<Either<AuthFailure, Unit>> handleAuthorizationResponse(
     AuthorizationCodeGrant grant,
     Map<String, String> queryParams,
   ) async {
@@ -88,15 +92,46 @@ class GithubAuthenticator {
     final usernameAndPassword =
         stringToBase64.encode('$clientId:$clientSecret');
     try {
-      _dio.deleteUri(revocationEndpoint,
+      try {
+        _dio.deleteUri(
+          revocationEndpoint,
           data: {
             'access_token': accessToken,
           },
-          options: Options(headers: {
-            'Authorization': 'basic $usernameAndPassword',
-          }));
-      await _credentialsStorage.clear();
-      return right(unit);
+          options: Options(
+            headers: {
+              'Authorization': 'basic $usernameAndPassword',
+            },
+          ),
+        );
+        await _credentialsStorage.clear();
+        return right(unit);
+      } on DioError catch (e) {
+        if (e.isNoConnectionError) {
+          print('Token not revoked');
+        } else {
+          rethrow;
+        }
+      }
+    } on PlatformException {
+      return left(const AuthFailure.storage());
+    }
+  }
+
+  Future<Either<AuthFailure, Credentials>> refresh(
+    Credentials credentials,
+  ) async {
+    try {
+      final refreshedCredentials = await credentials.refresh(
+          identifier: clientId,
+          secret: clientSecret,
+          httpClient: GithubOAuthHttpClient());
+      await _credentialsStorage.save(refreshedCredentials);
+      return right(refreshedCredentials);
+    } on FormatException {
+      return left(const AuthFailure.server());
+    } on AuthorizationException catch (e) {
+      return left(AuthFailure.server('${e.error} : ${e.description}'));
     } on PlatformException {
       return left(const AuthFailure.storage());
     }
